@@ -177,6 +177,11 @@ int ListFiles( char argv[][MAX_SIZE], int argc )
     int DirIndex = 0;
     for( int i = 1; i < argc; i++ )
     {
+        if( argv[i][0] == '\0' )
+        {
+            continue;
+        }
+
         if( argv[i][0] == '-')  // flags
         {
             if( strcmp( argv[i], "-l") == 0 )

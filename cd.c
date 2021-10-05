@@ -3,12 +3,6 @@ char PrevDirec[1024];
 
 int ChDir( char argv[][MAX_SIZE], int argc )
 {
-    if( argc > 2 )
-    {
-        printf( "cd: too many arguments\n" );
-        return 1;
-    }
-
     char *ret_str = getcwd( NULL, 0 );
     if( ret_str == NULL )
     {
