@@ -3,20 +3,22 @@
  * PromptDisplay and GetCommand functions are present.
  ****/
 
-void red () {
-  printf("\033[1;31m");
-}
-
-void yellow() {
-  printf("\033[1;33m");
-}
-
-void white() {
-    printf("\033[1;37m");
-}
-
-void reset () {
-  printf("\033[0m");
+int Tokenise( char TempArgv[], char Tokenised[][MAX_SIZE])
+{
+    char *str = strtok_r(TempArgv, " \t\n", &TempArgv);
+    int count = 0;
+    while ( str != NULL )
+    {
+        // printf( "%s ", str);
+        strcpy(Tokenised[count], str);
+        count++;
+        if( Tokenised[count][strlen(str) - 1] == ';' )
+        {
+            Tokenised[count][strlen(str) - 1] = '\0';
+        }
+        str = strtok_r(TempArgv, " \t\n", &TempArgv);
+    }
+    return count;
 }
 
 
@@ -135,37 +137,128 @@ void GetCommand()
     while ( args != NULL )
     {
         char Tokenised[MAX_ARGS][MAX_SIZE];
-        char *components = args, *str;
-        int count = 0;
-        
-        str = strtok_r(components, " \t\n", &components);
-        while ( str != NULL )
-        {
-            // printf( "%s ", str);
-            strcpy(Tokenised[count], str);
-            count++;
+        char *str;
+        char *pipeComp = args;
+        int count = 0, ret = 0;
 
-            if( Tokenised[count][strlen(str) - 1] == ';' )
+        // handling pipes
+        int PipeFd[2], PipeIn = 0, PipeOut = 1;
+        char PipeCnt = 0;
+        char TempArgv[MAX_PIPES + 1][MAX_SIZE];
+
+        // tokenise on the basis of pipes
+        str = strtok_r( pipeComp, "|", &pipeComp );
+        for ( ; str != NULL ;  )
+        {
+            strcpy( TempArgv[PipeCnt], str );
+            PipeCnt++;
+
+            str = strtok_r( NULL, "|", &pipeComp );
+        }
+        TempArgv[PipeCnt][0] = '\0';
+
+        // n processes need n-1 pipes
+        for( int i = 0; i < PipeCnt -1; i++ )
+        {
+            if (i != PipeCnt -1 && pipe( PipeFd ) < 0 )
             {
-                Tokenised[count][strlen(str) - 1] = '\0';
+                perror( "Pipe() failed");
+                _exit( errno );
             }
 
-            str = strtok_r(components, " \t\n", &components);
+            pid_t pid = fork();
+            if( pid < 0)
+            {
+                perror( "Fork() error");
+                _exit( errno );
+            }
+
+            else if( pid == 0)
+            {
+                if( PipeFd[1] != 1)
+                {
+                    if( dup2( PipeFd[1], 1 ) < 0)
+                    {
+                        perror( "dup2() failed");
+                        _exit( errno );
+                    }
+
+                    close(PipeFd[1]);
+                }
+
+                if( PipeIn != 0)
+                {
+                    if( dup2( PipeIn, 0 ) < 0)
+                    {
+                        perror( "dup2() failed");
+                        _exit( errno );
+                    }
+
+                    close(PipeIn);
+                }
+
+                PipeIn = PipeFd[0]; // Input for next pipe                
+            }
+
+            count = Tokenise( TempArgv[i], Tokenised );
+
+            int inp_fd = dup( 0 );
+            int out_fd = dup( 1 );
+
+            ret = ExecCommand(Tokenised, count);
+
+            dup2(inp_fd, 0);
+            InpF = 0;
+
+            dup2(out_fd, 1);
+            OutF = 1;
+
+            // close the unused pipe ends
+            close(PipeFd[1]);
+
         }
+
+        if( PipeIn != 0)
+        {
+            if( dup2( PipeIn, 0 ) < 0 )
+            {
+                perror( "dup2() failed");
+                _exit( errno );
+            }
+        }
+
+        count = Tokenise( TempArgv[PipeCnt-1], Tokenised );
 
         int inp_fd = dup( 0 );
         int out_fd = dup( 1 );
-
-        int ret = ExecCommand(Tokenised, count);
+        
+        ret = ExecCommand(Tokenised, count);
         
         dup2(inp_fd, 0);
         InpF = 0;
-
+        
         dup2(out_fd, 1);
         OutF = 1;
+
 
         args = strtok_r(command, ";", &command);
     }
 
     // free(command);
+}
+
+void red () {
+  printf("\033[1;31m");
+}
+
+void yellow() {
+  printf("\033[1;33m");
+}
+
+void white() {
+    printf("\033[1;37m");
+}
+
+void reset () {
+  printf("\033[0m");
 }

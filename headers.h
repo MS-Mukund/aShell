@@ -57,4 +57,6 @@ void yellow();
 void white();
 void reset ();
 
+char **PipesIO( char command[], char argv[][MAX_SIZE]);
+
 #endif

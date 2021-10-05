@@ -10,10 +10,77 @@ int ExecCommand( char argv[][MAX_SIZE], int argc )
    {
        printf("No command given\n");
        return -1;
-   } 
+   }
 
-   
-   
+    // handling input-output redirection. 
+   char NullStr[MAX_SIZE] = "";
+   for( int i = 0; i < argc; i++ )
+   {
+        int Lett = argv[i][0] - '0';
+
+        switch ( Lett )
+        {
+            case ('<' - '0'):
+                if( i == argc - 1)
+                {
+                    fprintf( stderr, "No file name given\n" );
+                    return -1;
+                }
+                InpF = 0;
+                if( (InpF = open( argv[i+1], O_RDONLY ) ) < 0 )
+                {
+                    perror( "open()");
+                    return errno;
+                }
+                
+                if( dup2( InpF, STDIN_FILENO ) < 0 )
+                {
+                    perror( "dup2()");
+                    return errno;
+                }
+                close(InpF);
+                strcpy( argv[i], NullStr );
+                strcpy( argv[i+1], NullStr );
+                // argv[i][0] = '\0';
+                // argv[i+1][0] = '\0';
+                break;
+            
+            case ('>' - '0'):
+                if( i == argc - 1)
+                {
+                    fprintf( stderr, "No file name given\n" );
+                    return -1;
+                }
+                OutF = 1;
+                if( argv[i][1] == '>' )     // append
+                {
+                    if( (OutF = open( argv[i+1], O_WRONLY | O_CREAT | O_APPEND, 0644 ) ) < 0 )
+                    {
+                        perror( "open()");
+                        return errno;
+                    }
+                }
+
+                else                        //overwrite
+                {
+                    if( (OutF = open( argv[i+1], O_WRONLY | O_CREAT | O_TRUNC, 0644 ) ) < 0 )
+                    {
+                        perror( "open()");
+                        return errno;
+                    }
+                }
+    
+                if( dup2( OutF, STDOUT_FILENO ) < 0 )
+                {
+                    perror( "dup2()");
+                    return errno;
+                }
+                close(OutF);
+                strcpy( argv[i], NullStr );
+                strcpy( argv[i+1], NullStr );
+                break;
+        }
+   }   
 
    if( strcmp(argv[0], "ls") == 0 )
    {
