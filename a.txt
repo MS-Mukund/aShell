@@ -1,0 +1,4 @@
+pid -- 7661
+Process Status -- R+
+memory -- 2662400 {Virtual Memory}
+Executable Path -- ~/a.out

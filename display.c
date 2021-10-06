@@ -21,6 +21,12 @@ int Tokenise( char TempArgv[], char Tokenised[][MAX_SIZE])
     return count;
 }
 
+void NoZombie(int signum)
+{
+    // just return
+    return;
+}
+
 
 int HistorySize = 0;
 char HomeDirec[MAX_SIZE]; // Path to home directory
@@ -125,6 +131,9 @@ void GetCommand()
 {
     char *command = malloc(sizeof(char) * MAX_SIZE);
     fgets( command, MAX_SIZE, stdin );
+
+    int inp_fd = dup( 0 );
+    int out_fd = dup( 1 );
     
     // remove newline character
     if(  command[strlen(command) - 1] == '\n' )
@@ -143,7 +152,7 @@ void GetCommand()
 
         // handling pipes
         int PipeFd[2], PipeIn = 0, PipeOut = 1;
-        char PipeCnt = 0;
+        int PipeCnt = 0;
         char TempArgv[MAX_PIPES + 1][MAX_SIZE];
 
         // tokenise on the basis of pipes
@@ -156,16 +165,18 @@ void GetCommand()
             str = strtok_r( NULL, "|", &pipeComp );
         }
         TempArgv[PipeCnt][0] = '\0';
+        printf( "%d\n", PipeCnt);
 
         // n processes need n-1 pipes
         for( int i = 0; i < PipeCnt -1; i++ )
         {
-            if (i != PipeCnt -1 && pipe( PipeFd ) < 0 )
+            if ( pipe( PipeFd ) < 0 )
             {
                 perror( "Pipe() failed");
                 _exit( errno );
             }
 
+            signal( SIGCHLD, NoZombie );
             pid_t pid = fork();
             if( pid < 0)
             {
@@ -173,7 +184,7 @@ void GetCommand()
                 _exit( errno );
             }
 
-            else if( pid == 0)
+            else if( pid == 0)  // child
             {
                 if( PipeFd[1] != 1)
                 {
@@ -198,23 +209,35 @@ void GetCommand()
                 }
 
                 PipeIn = PipeFd[0]; // Input for next pipe                
+
+                count = Tokenise( TempArgv[i], Tokenised );
+
+                ret = ExecCommand(Tokenised, count);
+                fprintf( stderr, "w %s\n", Tokenised[0]);
+
+                dup2(inp_fd, 0);
+                close(inp_fd);
+                InpF = 0;
+
+                dup2(out_fd, 1);
+                close(out_fd);
+                OutF = 1;
             }
+            else // parent
+            {
+                int status, tmp = 1;
+                close(PipeFd[0]);
+                close(PipeFd[1]);
 
-            count = Tokenise( TempArgv[i], Tokenised );
-
-            int inp_fd = dup( 0 );
-            int out_fd = dup( 1 );
-
-            ret = ExecCommand(Tokenised, count);
-
-            dup2(inp_fd, 0);
-            InpF = 0;
-
-            dup2(out_fd, 1);
-            OutF = 1;
+                while( tmp > 0 )
+                {
+                    tmp = wait(&status);
+                }
+            }
 
             // close the unused pipe ends
             close(PipeFd[1]);
+            // close(PipeFd[0]);
 
         }
 
@@ -225,24 +248,30 @@ void GetCommand()
                 perror( "dup2() failed");
                 _exit( errno );
             }
+            close(PipeIn);
         }
 
         count = Tokenise( TempArgv[PipeCnt-1], Tokenised );
+        for( int i = 0; i < count; i++)
+        {
+            printf( "%s\n", Tokenised[i]);
+        }
+        // fprintf( stderr, "%s o ok\n", Tokenised[0]);
 
         int inp_fd = dup( 0 );
         int out_fd = dup( 1 );
         
         ret = ExecCommand(Tokenised, count);
-        
+        fprintf( stderr,"o %s\n", Tokenised[0]);
         dup2(inp_fd, 0);
         InpF = 0;
         
         dup2(out_fd, 1);
         OutF = 1;
 
-
         args = strtok_r(command, ";", &command);
     }
+    // fprintf( stderr, "ok\n");
 
     // free(command);
 }
