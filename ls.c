@@ -162,6 +162,11 @@ int ExecCommand( char argv[][MAX_SIZE], int argc )
         return History( argv, argc );
     }
 
+    else if( strcmp(argv[0], "jobs") == 0 )
+    {
+        return jobs( argv, argc );
+    }
+
     else if( strcmp(argv[0], "exit") == 0 )
     {
         // return Exit( argv, argc );

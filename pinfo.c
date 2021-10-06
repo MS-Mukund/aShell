@@ -65,10 +65,10 @@ int ProcessInfo( char argv[][MAX_SIZE], int argc )
         return errno;
     }
 
-    char buffer[100][MAX_SIZE];
+    char buffer[25][MAX_SIZE];
     // printf( "yes\n");
     int i = 0;
-    while( !feof( fp ) && i < 100 )
+    while( !feof( fp ) && i < 25 )
     {
         fscanf( fp, "%s", buffer[i] );
         i++;

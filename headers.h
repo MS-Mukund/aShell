@@ -25,9 +25,21 @@
 // macros
 #define MAX_SIZE 1024
 #define MAX_ARGS 12
-#define MAX_PROCESS 7
+#define MAX_PROCESS 128
 #define SPEC_CODE 123456
 #define MAX_PIPES 12
+
+// structs
+typedef struct BackgroundProcess
+{
+    int job_id;
+    pid_t pid;
+
+    char **argv;
+    int argc;
+
+    struct BackgroundProcess *next;
+} BackPro;
 
 // global variables
 extern char HomeDirec[MAX_SIZE];
@@ -35,6 +47,8 @@ extern char PrevDirec[MAX_SIZE];
 extern int HistorySize;
 extern int InpF;
 extern int OutF;
+extern int ProcessCount;
+extern BackPro *ProcessList;    // points to head of LL
 
 // function declarations
 void PromptDisplay();
@@ -51,12 +65,11 @@ int ProcessInfo( char argv[][MAX_SIZE], int argc );
 int ForegrBackgr( char argv[][MAX_SIZE], int argc );
 
 int History( char argv[][MAX_SIZE], int argc );
+int jobs( char argv[][MAX_SIZE], int argc );
 
 void red ();
 void yellow();
 void white();
 void reset ();
-
-char **PipesIO( char command[], char argv[][MAX_SIZE]);
 
 #endif

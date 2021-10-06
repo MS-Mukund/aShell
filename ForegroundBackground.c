@@ -1,46 +1,94 @@
 #include "headers.h"
 
-typedef struct BackgroundProcess
-{
-    pid_t pid;
-    char name[MAX_SIZE];
-    struct BackgroundProcess *next;
-} BackPro;
-
 int ProcessCount = 0;
 BackPro *ProcessList = NULL;
 
-int AddProcess(pid_t pid, char *name)
+int AddProcess(pid_t pid, char **tmp, int argc)
 {
    
-    if (ProcessCount >= MAX_PROCESS)
+    if (ProcessCount >= MAX_PROCESS) // kill a process randomly
     {
         if (kill(ProcessList->pid, SIGKILL) == -1)
         {
             printf("Error killing process\n");
-            return -1;
+            _exit(errno);
         }
+        
+        BackPro *tmp = ProcessList;
+        ProcessList = ProcessList->next;
 
-        ProcessList->pid = pid;
-        strcpy(ProcessList->name, name);
-    }
-
-    else
-    {
-        BackPro *new = (BackPro *)malloc(sizeof(BackPro));
-        if (new == NULL)
+        for( int i = 0; i < tmp->argc; i++)
         {
-            printf("Not enough memory\n");
-            return -1;
+            free(tmp->argv[i]);
         }
-
-        new->pid = pid;
-        strcpy(new->name, name);
-        new->next = ProcessList;
-
-        ProcessList = new;
-        ProcessCount++;
+        free(tmp->argv);
+        free(tmp);
     }
+
+    BackPro *new = (BackPro *)malloc(sizeof(BackPro));
+    if (new == NULL)
+    {
+        printf("Not enough memory\n");
+        return -1;
+    }
+    new->pid = pid;
+    new->job_id = ProcessCount + 1;
+    new->argc = argc;
+    new->argv = (char **)malloc(argc * sizeof(char *));
+    for( int i = 0; i < argc; i++)
+    {
+        // printf( "wow %s\n", tmp[i]);
+        new->argv[i] = (char *)malloc(strlen(tmp[i]) + 1);
+        strcpy(new->argv[i], tmp[i]);
+        // printf( "%s\n", new->argv[i]);
+    } 
+    // new->next = ProcessList;
+    // if( ProcessList == NULL )
+    // {
+    //     new->job_id = 1;
+    // }
+    // else
+    // {
+    //     new->job_id = ProcessList->job_id + 1;
+    // }
+    // ProcessList = new;
+
+    BackPro *Head = ProcessList, *prev = NULL;
+    while( Head != NULL)
+    {
+        if( strcmp( new->argv[0], Head->argv[0]) > 0) // alphabetical order
+        {
+            if( prev == NULL)
+            {
+                new->next = Head;
+                ProcessList = new;
+            }
+            else
+            {
+                prev->next = new;
+                new->next = Head;
+            }
+            break;
+        }
+        prev = Head;
+        Head = Head->next;
+    }
+
+    if( Head == NULL)
+    {
+        if( prev == NULL)
+        {
+            new->next = NULL;
+            ProcessList = new;
+        }
+        else
+        {
+            prev->next = new;
+            new->next = NULL;
+        }
+    }
+
+    ProcessCount++;
 
     return 0;
 }
@@ -58,9 +106,9 @@ void FindAndDelProcess(pid_t pid, char str[])
             break;
         }
         
-        if( tmp->pid == pid)
+        if( tmp->pid == pid )
         {
-            strcpy(str, tmp->name);
+            strcpy(str, tmp->argv[0]);
             if( prev == NULL)
             {
                 ProcessList = tmp->next;
@@ -69,7 +117,14 @@ void FindAndDelProcess(pid_t pid, char str[])
             {
                 prev->next = tmp->next;
             }
+
+            for( int i = 0; i < tmp->argc; i++)
+            {
+                free(tmp->argv[i]);
+            }
+            free(tmp->argv);
             free(tmp);
+            
             ProcessCount--;
             break;
         }
@@ -89,13 +144,7 @@ void waiting_func(int signum)
     // waitpid( signum, NULL, 0 );
     int child_stat;
     pid_t pid = waitpid(-1, &child_stat, WNOHANG | WUNTRACED);
-    if( pid == -1 )
-    {
-        // printf( "error: waitpid() failed\n");
-        return;
-    }
-
-    if( pid == 0 ) // no change
+    if( pid == -1 || pid == 0 )
     {
         return;
     }
@@ -135,29 +184,34 @@ int ForegrBackgr(char argv[][MAX_SIZE], int argc)
     char **tmp = (char **)malloc(sizeof(char *) * (argc + 1));
     if (tmp == NULL)
     {
-        printf("Error: not enough memory\n");
-        return -1;
+        perror("malloc error");
+        _exit(errno);
     }
     int backgr = 0;
-
-    for (int i = 0; i < argc; i++)
+    int flag = 0;
+    for (int i = 0, j = 0; i < argc; i++)
     {
-        // printf( "%d  %d\n", i, argc);
         if (strcmp(argv[i], "&") == 0)
         {
-            // printf( "ok\n");
             backgr = 1;
             argv[i][0] = '\0';
+            flag = 1;
             continue;
         }
-
-        tmp[i] = (char *)malloc(sizeof(char) * MAX_SIZE);
-        if (tmp[i] == NULL)
+        tmp[j] = (char *)malloc(sizeof(char) * MAX_SIZE);
+        if (tmp[j] == NULL)
         {
-            printf("Error: not enough memory\n");
+            perror("malloc error");
+            _exit(errno);
         }
 
-        strcpy(tmp[i], argv[i]);
+        strcpy(tmp[j], argv[i]);
+        j++;
+    }
+    
+    if (flag == 1)
+    {
+        argc--;
     }
     tmp[argc] = NULL;
 
@@ -167,21 +221,22 @@ int ForegrBackgr(char argv[][MAX_SIZE], int argc)
         const sigset_t TermIO[2] = { SIGTTIN, SIGTTOU };    
         if( sigprocmask( SIG_BLOCK, TermIO, NULL ) < 0)
         {
-            perror( "Sigprocmask() error: ");
+            perror( "Sigprocmask() error");
             return errno;
         }
-
     }
 
+    pid_t par = getpid();
     pid_t pid = fork();
-    // setpgid(0, 0);
-    // printf( "forked\n");
     int ret = 0;
     if (pid < 0)
     {
         perror("Fork error");
         return errno;
     }
+
+    tcsetpgrp( STDIN_FILENO, par );
+    tcsetpgrp( STDOUT_FILENO, par );
 
     if (pid == 0) // Child
     {   
@@ -196,20 +251,12 @@ int ForegrBackgr(char argv[][MAX_SIZE], int argc)
             fprintf( stderr, "Exec error: Either the command is not applicable, or it doesn't exist\n");
             return errno;
         }
-
-        for( int i = 0; i < argc; i++)
-        {
-            // printf( "ok \n");
-            //printf( "what ");
-            free(tmp[i]);
-        }
-        // free(tmp);
+        printf( "cpro\n");
     }
 
     else // Parent
     {
-        // printf( "parent\n");
-        if ( backgr == 1 && AddProcess( pid, tmp[0] ) == -1)
+        if ( backgr == 1 && AddProcess( pid, tmp, argc ) == -1)
         {
             printf("Error: process already exists\n");
             return -1;
@@ -224,6 +271,12 @@ int ForegrBackgr(char argv[][MAX_SIZE], int argc)
         {
             printf("%d\n", pid);
         }
+
+        // for( int i = 0; i < argc; i++)
+        // {
+        //     free(tmp[i]);
+        // }
+        // free(tmp);
     }
 
     return 0;
