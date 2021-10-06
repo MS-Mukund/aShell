@@ -193,7 +193,7 @@ int ForegrBackgr(char argv[][MAX_SIZE], int argc)
         }
         if (execvp(tmp[0], tmp) == -1)
         {
-            printf("Exec error: Either the command is not applicable, or it doesn't exist\n");
+            fprintf( stderr, "Exec error: Either the command is not applicable, or it doesn't exist\n");
             return errno;
         }
 

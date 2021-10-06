@@ -130,10 +130,15 @@ void PromptDisplay()
 void GetCommand()
 {
     char *command = malloc(sizeof(char) * MAX_SIZE);
-    fgets( command, MAX_SIZE, stdin );
+    char *retstr = fgets( command, MAX_SIZE, stdin );
+    if( retstr == NULL )
+    {
+        perror( "fgets() failed");
+        _exit( errno );
+    }
 
-    int inp_fd = dup( 0 );
-    int out_fd = dup( 1 );
+    int inp_fd = dup( STDIN_FILENO );
+    int out_fd = dup( STDOUT_FILENO );
     
     // remove newline character
     if(  command[strlen(command) - 1] == '\n' )
@@ -165,7 +170,7 @@ void GetCommand()
             str = strtok_r( NULL, "|", &pipeComp );
         }
         TempArgv[PipeCnt][0] = '\0';
-        printf( "%d\n", PipeCnt);
+        // printf( "%d\n", PipeCnt);
 
         // n processes need n-1 pipes
         for( int i = 0; i < PipeCnt -1; i++ )
@@ -176,97 +181,50 @@ void GetCommand()
                 _exit( errno );
             }
 
-            signal( SIGCHLD, NoZombie );
-            pid_t pid = fork();
-            if( pid < 0)
+            if( PipeFd[1] != STDOUT_FILENO)
             {
-                perror( "Fork() error");
-                _exit( errno );
-            }
-
-            else if( pid == 0)  // child
-            {
-                if( PipeFd[1] != 1)
+                if( dup2( PipeFd[1], STDOUT_FILENO ) < 0)
                 {
-                    if( dup2( PipeFd[1], 1 ) < 0)
-                    {
-                        perror( "dup2() failed");
-                        _exit( errno );
-                    }
-
-                    close(PipeFd[1]);
+                    perror( "dup2() failed in PipeWr");
+                    return;
                 }
-
-                if( PipeIn != 0)
-                {
-                    if( dup2( PipeIn, 0 ) < 0)
-                    {
-                        perror( "dup2() failed");
-                        _exit( errno );
-                    }
-
-                    close(PipeIn);
-                }
-
-                PipeIn = PipeFd[0]; // Input for next pipe                
-
-                count = Tokenise( TempArgv[i], Tokenised );
-
-                ret = ExecCommand(Tokenised, count);
-                fprintf( stderr, "w %s\n", Tokenised[0]);
-
-                dup2(inp_fd, 0);
-                close(inp_fd);
-                InpF = 0;
-
-                dup2(out_fd, 1);
-                close(out_fd);
-                OutF = 1;
-            }
-            else // parent
-            {
-                int status, tmp = 1;
-                close(PipeFd[0]);
                 close(PipeFd[1]);
-
-                while( tmp > 0 )
-                {
-                    tmp = wait(&status);
-                }
             }
 
-            // close the unused pipe ends
-            close(PipeFd[1]);
+            // for final process we must write to stdout
+
+                          
+            count = Tokenise( TempArgv[i], Tokenised );
+            ret = ExecCommand(Tokenised, count);
+            // fprintf( stderr, "w %s\n", Tokenised[0]);
+
+            // close(PipeFd[1]);
             // close(PipeFd[0]);
 
-        }
-
-        if( PipeIn != 0)
-        {
-            if( dup2( PipeIn, 0 ) < 0 )
+            if( PipeFd[0] != 0)
             {
-                perror( "dup2() failed");
-                _exit( errno );
+                if( dup2( PipeFd[0], STDIN_FILENO ) < 0 )
+                {
+                    perror( "dup2() failed");
+                    _exit( errno );
+                }
+                close(PipeFd[0]);
             }
-            close(PipeIn);
+
         }
 
+        // for last process
+        dup2(out_fd, STDOUT_FILENO);
+        OutF = 1;
         count = Tokenise( TempArgv[PipeCnt-1], Tokenised );
-        for( int i = 0; i < count; i++)
-        {
-            printf( "%s\n", Tokenised[i]);
-        }
         // fprintf( stderr, "%s o ok\n", Tokenised[0]);
 
-        int inp_fd = dup( 0 );
-        int out_fd = dup( 1 );
-        
         ret = ExecCommand(Tokenised, count);
-        fprintf( stderr,"o %s\n", Tokenised[0]);
-        dup2(inp_fd, 0);
+        // fprintf( stderr,"o %s\n", Tokenised[0]);
+        dup2(inp_fd, STDIN_FILENO);
         InpF = 0;
         
-        dup2(out_fd, 1);
+        dup2(out_fd, STDOUT_FILENO);
         OutF = 1;
 
         args = strtok_r(command, ";", &command);
@@ -291,3 +249,53 @@ void white() {
 void reset () {
   printf("\033[0m");
 }
+   //signal( SIGCHLD, NoZombie );
+            //pid_t pid = fork();
+            //if( pid < 0)
+            //{
+            //    perror( "Fork() error");
+            //    _exit( errno );
+            //}
+//
+            //else if( pid == 0 )  // child
+            //{
+
+            
+            // I/O redirection
+            // if( dup2( inp_fd, STDIN_FILENO) < 0)
+            // {
+            //     perror( "dup2() failed stdin inside");
+            //     return;
+            // }
+            // close(PipeIn);
+            // InpF = 0;
+            // if(dup2(out_fd, STDOUT_FILENO) < 0)
+            // {
+            //     perror( "dup2() failed stdout inside");
+            //     return;
+            // }
+            // close(PipeFd[1]);
+            // OutF = 1;
+            
+            // if( PipeFd[0] != STDIN_FILENO)
+            // {
+            //     if( dup2( PipeIn, STDIN_FILENO ) < 0)
+            //     {
+            //         perror( "dup2() failed PipeIn");
+            //         return;
+            //     }
+            //     close(PipeFd[0]);
+                
+            // }
+            // else// parent
+            //{
+            //    int status, tmp = 1;
+            //    close(PipeFd[0]);
+            //    close(PipeFd[1]);
+            //    while( tmp > 0 )
+            //    {
+            //        tmp = wait(&status);
+            //    }
+            //}
+
+            // close the unused pipe ends

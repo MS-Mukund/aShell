@@ -1,4 +1,2 @@
-pid -- 7661
-Process Status -- R+
-memory -- 2662400 {Virtual Memory}
-Executable Path -- ~/a.out
+      1      18     167
+a.out PipesIO.c exit.c Assignment-3.pdf ForegroundBackground.c b.txt display.c headersC.h a.txt history.c pinfo.c ls.c README.md Makefile headers.h cd.c echo.c pwd.c 

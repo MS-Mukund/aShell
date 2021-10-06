@@ -39,10 +39,13 @@ int ExecCommand( char argv[][MAX_SIZE], int argc )
                     return errno;
                 }
                 close(InpF);
-                strcpy( argv[i], NullStr );
-                strcpy( argv[i+1], NullStr );
-                // argv[i][0] = '\0';
-                // argv[i+1][0] = '\0';
+
+                for( int j = i; j < argc - 2; j++ ) // window sliding
+                {
+                    strcpy(argv[j], argv[j+2]);
+                }
+                argc -= 2;                
+                argv[argc][0] = '\0';
                 break;
             
             case ('>' - '0'):
@@ -76,8 +79,14 @@ int ExecCommand( char argv[][MAX_SIZE], int argc )
                     return errno;
                 }
                 close(OutF);
-                strcpy( argv[i], NullStr );
-                strcpy( argv[i+1], NullStr );
+
+                for( int j = i; j < argc - 2; j++ ) // window sliding
+                {
+                    strcpy(argv[j], argv[j+2]);
+                }
+                argc -= 2;         
+                argv[argc][0] = '\0';    
+                argv[argc+1][0] = '\0';                
                 break;
         }
    }   
