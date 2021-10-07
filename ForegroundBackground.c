@@ -1,6 +1,7 @@
 #include "headers.h"
 
 int ProcessCount = 0;
+int AllProcess = 0;
 BackPro *ProcessList = NULL;
 
 int AddProcess(pid_t pid, char **tmp, int argc)
@@ -32,7 +33,8 @@ int AddProcess(pid_t pid, char **tmp, int argc)
         return -1;
     }
     new->pid = pid;
-    new->job_id = ProcessCount + 1;
+    AllProcess++;
+    new->job_id = AllProcess;
     new->argc = argc;
     new->argv = (char **)malloc(argc * sizeof(char *));
     for( int i = 0; i < argc; i++)

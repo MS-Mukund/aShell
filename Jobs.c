@@ -72,3 +72,41 @@ int jobs( char argv[][MAX_SIZE], int argc )
 
     return 0;
 }
+
+int sig ( char argv[][MAX_SIZE], int argc )
+{
+    if( argc != 3 )
+    {
+        printf( "Signal usage: \"sig [job_id] [signal_no]\" \n");
+        return 1;
+    }
+
+    int job_id = atoi( argv[1] );
+    int sig_no = atoi( argv[2] );
+
+    if( sig_no > 31 || sig_no < 1 )
+    {
+        printf( "Invalid signal number\n");
+        return 3;
+    }
+
+    BackPro *Ptr = ProcessList;
+    for( Ptr = ProcessList; Ptr != NULL; Ptr = Ptr->next )
+    {
+        if( Ptr->job_id == job_id )
+        {
+            if( kill( Ptr->pid, sig_no ) < 0)
+            {
+                perror( "kill error");
+                return errno;
+            }
+            return 0;
+        }
+    }
+
+    if( Ptr == NULL )
+    {
+        printf( "No such job id\n" );
+        return 2;
+    }
+}

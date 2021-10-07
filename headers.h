@@ -48,6 +48,7 @@ extern int HistorySize;
 extern int InpF;
 extern int OutF;
 extern int ProcessCount;
+extern int AllProcess;
 extern BackPro *ProcessList;    // points to head of LL
 
 // function declarations
@@ -66,6 +67,7 @@ int ForegrBackgr( char argv[][MAX_SIZE], int argc );
 
 int History( char argv[][MAX_SIZE], int argc );
 int jobs( char argv[][MAX_SIZE], int argc );
+int sig( char argv[][MAX_SIZE], int argc );
 
 void red ();
 void yellow();
