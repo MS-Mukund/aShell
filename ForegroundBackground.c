@@ -4,6 +4,9 @@ int ProcessCount = 0;
 int AllProcess = 0;
 BackPro *ProcessList = NULL;
 
+void waiting_func(int signum);
+void FindAndDelProcess(pid_t pid, char str[]);
+
 int AddProcess(pid_t pid, char **tmp, int argc)
 {
    
@@ -33,8 +36,11 @@ int AddProcess(pid_t pid, char **tmp, int argc)
         return -1;
     }
     new->pid = pid;
+    printf( "pid: %d\n", pid);
+    
     AllProcess++;
     new->job_id = AllProcess;
+   
     new->argc = argc;
     new->argv = (char **)malloc(argc * sizeof(char *));
     for( int i = 0; i < argc; i++)
@@ -44,16 +50,6 @@ int AddProcess(pid_t pid, char **tmp, int argc)
         strcpy(new->argv[i], tmp[i]);
         // printf( "%s\n", new->argv[i]);
     } 
-    // new->next = ProcessList;
-    // if( ProcessList == NULL )
-    // {
-    //     new->job_id = 1;
-    // }
-    // else
-    // {
-    //     new->job_id = ProcessList->job_id + 1;
-    // }
-    // ProcessList = new;
 
     BackPro *Head = ProcessList, *prev = NULL;
     while( Head != NULL)
@@ -156,7 +152,45 @@ void waiting_func(int signum)
     if (str[0] == '\0')
     {
         fprintf(stderr, "error: process not found\n");
-        exit(EXIT_FAILURE);
+        return;
+    }
+
+    fprintf(stderr, "\n%s with pid %d exited ", str, pid);
+
+    if (WIFEXITED(child_stat))
+    {
+        fprintf(stderr, "normally\n");
+    }
+    else
+    {
+        fprintf(stderr, "abnormally\n");
+    }
+
+    yellow();
+    PromptDisplay();
+    reset();
+
+    fflush(stdout);
+
+    return;
+}
+
+void waiting_func2(int signum)
+{
+    // waitpid( signum, NULL, 0 );
+    int child_stat;
+    pid_t pid = waitpid(-1, &child_stat, WNOHANG );
+    if( pid == -1 || pid == 0 )
+    {
+        return;
+    }
+
+    char str[MAX_SIZE];
+    FindAndDelProcess(pid, str);
+    if (str[0] == '\0')
+    {
+        fprintf(stderr, "error: process not found\n");
+        return;
     }
 
     fprintf(stderr, "\n%s with pid %d exited ", str, pid);
@@ -220,10 +254,21 @@ int ForegrBackgr(char argv[][MAX_SIZE], int argc)
     if (backgr == 1)
     {
         sig_t sig = signal(SIGCHLD, waiting_func);
+        
         const sigset_t TermIO[2] = { SIGTTIN, SIGTTOU };    
         if( sigprocmask( SIG_BLOCK, TermIO, NULL ) < 0)
         {
             perror( "Sigprocmask() error");
+            return errno;
+        }
+    }
+
+    else if( backgr == 0)
+    {
+        sig_t sig = signal(SIGCHLD, waiting_func2);
+        if( sig < 0)
+        {
+            perror( "Signal() error");
             return errno;
         }
     }
@@ -253,7 +298,7 @@ int ForegrBackgr(char argv[][MAX_SIZE], int argc)
             fprintf( stderr, "Exec error: Either the command is not applicable, or it doesn't exist\n");
             return errno;
         }
-        printf( "cpro\n");
+
     }
 
     else // Parent
@@ -267,6 +312,7 @@ int ForegrBackgr(char argv[][MAX_SIZE], int argc)
         if (backgr == 0)
         {
             waitpid(pid, &ret, 0);
+
         }
 
         if (backgr == 1)

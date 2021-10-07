@@ -46,7 +46,7 @@ int ExecCommand( char argv[][MAX_SIZE], int argc )
                 }
                 argc -= 2;                
                 argv[argc][0] = '\0';
-                break;
+                continue;
             
             case ('>' - '0'):
                 if( i == argc - 1)
@@ -87,7 +87,7 @@ int ExecCommand( char argv[][MAX_SIZE], int argc )
                 argc -= 2;         
                 argv[argc][0] = '\0';    
                 argv[argc+1][0] = '\0';                
-                break;
+                continue;
         }
    }   
 
@@ -172,6 +172,17 @@ int ExecCommand( char argv[][MAX_SIZE], int argc )
     {
         return sig( argv, argc );
     }
+
+    else if( strcmp( argv[0], "fg") == 0 )
+    {
+        return BringFg( argv, argc );
+    }
+
+    else if( strcmp( argv[0], "bg") == 0 )
+    {
+        return BringBg( argv, argc );
+    }
+    //////
 
     else if( strcmp(argv[0], "exit") == 0 )
     {

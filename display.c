@@ -27,19 +27,34 @@ void NoZombie(int signum)
     return;
 }
 
+void ControlZ(int sig)
+{
+    printf( "yes\n");
+    return;        
+}
+
+void ControlC( int sig)
+{
+    
+
+    return;
+}
+
 
 int HistorySize = 0;
 char HomeDirec[MAX_SIZE]; // Path to home directory
 
 int main(void)
 {
+    // signal( SIGTSTP, ControlZ );
+    // signal( SIGINT , ControlC );
+
     char *ret_str = (char *)malloc(MAX_SIZE * sizeof(char));
     if( ret_str == NULL )
     {
         printf( "Not enough memory\n");
         exit(1);
     }
-
     PrevDirec[0] = '\0';
 
     ret_str = getcwd( HomeDirec, MAX_SIZE );
@@ -52,8 +67,7 @@ int main(void)
     while( 1 )
     {
         PromptDisplay();
-        // printf("yayy\n");
-        // fprintf( stderr, "yes\n");
+        
         GetCommand();
     }
     return 0;
@@ -131,10 +145,10 @@ void GetCommand()
 {
     char *command = malloc(sizeof(char) * MAX_SIZE);
     char *retstr = fgets( command, MAX_SIZE, stdin );
-    if( retstr == NULL )
+    if( retstr == NULL )        // Ctrl D
     {
-        perror( "fgets() failed");
-        _exit( errno );
+        printf( "\n");
+        exit( 0 );
     }
 
     int inp_fd = dup( STDIN_FILENO );
@@ -249,53 +263,3 @@ void white() {
 void reset () {
   printf("\033[0m");
 }
-   //signal( SIGCHLD, NoZombie );
-            //pid_t pid = fork();
-            //if( pid < 0)
-            //{
-            //    perror( "Fork() error");
-            //    _exit( errno );
-            //}
-//
-            //else if( pid == 0 )  // child
-            //{
-
-            
-            // I/O redirection
-            // if( dup2( inp_fd, STDIN_FILENO) < 0)
-            // {
-            //     perror( "dup2() failed stdin inside");
-            //     return;
-            // }
-            // close(PipeIn);
-            // InpF = 0;
-            // if(dup2(out_fd, STDOUT_FILENO) < 0)
-            // {
-            //     perror( "dup2() failed stdout inside");
-            //     return;
-            // }
-            // close(PipeFd[1]);
-            // OutF = 1;
-            
-            // if( PipeFd[0] != STDIN_FILENO)
-            // {
-            //     if( dup2( PipeIn, STDIN_FILENO ) < 0)
-            //     {
-            //         perror( "dup2() failed PipeIn");
-            //         return;
-            //     }
-            //     close(PipeFd[0]);
-                
-            // }
-            // else// parent
-            //{
-            //    int status, tmp = 1;
-            //    close(PipeFd[0]);
-            //    close(PipeFd[1]);
-            //    while( tmp > 0 )
-            //    {
-            //        tmp = wait(&status);
-            //    }
-            //}
-
-            // close the unused pipe ends

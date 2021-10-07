@@ -69,6 +69,12 @@ int History( char argv[][MAX_SIZE], int argc );
 int jobs( char argv[][MAX_SIZE], int argc );
 int sig( char argv[][MAX_SIZE], int argc );
 
+int BringFg( char argv[][MAX_SIZE], int argc );
+int BringBg( char argv[][MAX_SIZE], int argc );
+
+void FindAndDelProcess(pid_t pid, char str[]);
+int AddProcess(pid_t pid, char **tmp, int argc);
+
 void red ();
 void yellow();
 void white();
