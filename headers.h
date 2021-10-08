@@ -47,6 +47,9 @@ extern char PrevDirec[MAX_SIZE];
 extern int HistorySize;
 extern int InpF;
 extern int OutF;
+
+extern pid_t ParId;
+extern pid_t FgId;
 extern int ProcessCount;
 extern int AllProcess;
 extern BackPro *ProcessList;    // points to head of LL

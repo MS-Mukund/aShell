@@ -39,48 +39,47 @@ int jobs( char argv[][MAX_SIZE], int argc )
 
     for( BackPro *Ptr = ProcessList; Ptr != NULL; Ptr = Ptr->next )
     {
-        printf( "ok\n");
+        // printf( "ok\n");
         sprintf( str, "/proc/%d/stat", Ptr->pid );
         FILE *fp;
-        printf( "got it\n");
+        // printf( "got it\n");
         if( (fp = fopen( str, "r" ) ) < 0 )
         {
             perror( "open error");
             return 0;
         }
-        printf( "got it\n");
+        // printf( "got it\n");
 
         char runn[MAX_SIZE];
         for( int i = 0; i < 3; i++)
         {
-            printf( "%d %d\n", i, sizeof(fp));
+            // xprintf( "%d %d\n", i, sizeof(fp));
             fscanf( fp, "%s", runn );
         }
-        printf( "got it\n");
+        // printf( "got it\n");
         printf( "[%d] ", Ptr->job_id );
     
         if( strcmp( runn, "S") == 0 || strcmp(runn, "R") == 0 )
         {
             if( running == 1 )
             {
-                printf( "running    ");
+                printf( "running ");
             }
         }
         else
         {
             if( stopped == 1 )
             {
-                printf( "stopped    ");
+                printf( "stopped ");
             }
         }
-        printf( "joke\n");
+        // printf( "joke\n");
 
         for( int j = 0; j < Ptr->argc ; j++ )
         {
             printf( "%s ", Ptr->argv[j] );
         }
-        printf( "\n" );
-        printf( "nice\n");
+        printf( "[%d]\n", Ptr->pid );
     }
 
     return 0;
@@ -157,7 +156,6 @@ int BringFg( char argv[][MAX_SIZE], int argc )
 
     int job_id = atoi( argv[1] );
     char str[MAX_SIZE];
-    int par = getpid();
 
     BackPro *Ptr = ProcessList;
     for( ; Ptr != NULL; Ptr = Ptr->next )
@@ -183,14 +181,13 @@ int BringFg( char argv[][MAX_SIZE], int argc )
             // runn[2] contains status of process
             // runn[4] contains process group id of process
 
-            // if( runn[2][0] != 'S' || runn[2][0] != 'R' )   // stopped
-            // {
-                if( kill( Ptr->pid, SIGCONT ) < 0)
-                {
-                    perror( "kill() failed");
-                    return errno;
-                }
-            // }
+           
+            if( kill( Ptr->pid, SIGCONT ) < 0)
+            {
+                perror( "kill() failed");
+                return errno;
+            }
+                
             char str[MAX_SIZE];
 
             signal(SIGTTOU, SIG_IGN);   // parent should not take input
@@ -205,16 +202,18 @@ int BringFg( char argv[][MAX_SIZE], int argc )
             
             // wait for the process to finish
             pid_t Pr_pid = Ptr->pid;
+            FgId = Pr_pid;
             int status;
+            int ret;
             // printf( "%d\n", Ptr->pid);
-            if( waitpid( Pr_pid, &status, WUNTRACED ) == -1)
+            if( ( ret = waitpid( Pr_pid, &status, WUNTRACED | WCONTINUED ) ) == -1 )
             {
                 perror( "waitpid() error");
                 return errno;
             }
 
             // after child exits
-            if( tcsetpgrp( STDIN_FILENO, par ) < 0 )
+            if( tcsetpgrp( STDIN_FILENO, ParId ) < 0 )
             {
                 perror( "tcsetpgrp() error");
                 return errno;
@@ -224,8 +223,9 @@ int BringFg( char argv[][MAX_SIZE], int argc )
             signal(SIGTTOU, SIG_DFL);
             signal(SIGTTIN, SIG_DFL);
 
-            if( !WIFSTOPPED(status) || WIFEXITED(status) ) // not stopped
+            if( !WIFSTOPPED(status) ) // not stopped
             {
+                printf( "not stopped\n");
                 FindAndDelProcess( Pr_pid, str );
             }
             

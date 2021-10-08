@@ -36,7 +36,7 @@ int AddProcess(pid_t pid, char **tmp, int argc)
         return -1;
     }
     new->pid = pid;
-    printf( "pid: %d\n", pid);
+    // printf( "pid: %d\n", pid);
     
     AllProcess++;
     new->job_id = AllProcess;
@@ -215,8 +215,7 @@ void waiting_func2(int signum)
 
 int ForegrBackgr(char argv[][MAX_SIZE], int argc)
 {
-    // printf( "Foreground and background shell processes\n" );
-
+    printf( "entered\n");
     char **tmp = (char **)malloc(sizeof(char *) * (argc + 1));
     if (tmp == NULL)
     {
@@ -224,14 +223,12 @@ int ForegrBackgr(char argv[][MAX_SIZE], int argc)
         _exit(errno);
     }
     int backgr = 0;
-    int flag = 0;
     for (int i = 0, j = 0; i < argc; i++)
     {
         if (strcmp(argv[i], "&") == 0)
         {
             backgr = 1;
             argv[i][0] = '\0';
-            flag = 1;
             continue;
         }
         tmp[j] = (char *)malloc(sizeof(char) * MAX_SIZE);
@@ -245,7 +242,7 @@ int ForegrBackgr(char argv[][MAX_SIZE], int argc)
         j++;
     }
     
-    if (flag == 1)
+    if (backgr == 1)
     {
         argc--;
     }
@@ -265,16 +262,18 @@ int ForegrBackgr(char argv[][MAX_SIZE], int argc)
 
     else if( backgr == 0)
     {
-        sig_t sig = signal(SIGCHLD, waiting_func2);
-        if( sig < 0)
-        {
-            perror( "Signal() error");
-            return errno;
-        }
+        // sig_t sig = signal(SIGCHLD, waiting_func2);
+        // if( sig < 0)
+        // {
+        //     perror( "Signal() error");
+        //     return errno;
+        // }
     }
 
+    // printf( "before fork\n");
     pid_t par = getpid();
     pid_t pid = fork();
+    // printf( "after fork\n");
     int ret = 0;
     if (pid < 0)
     {
@@ -282,8 +281,10 @@ int ForegrBackgr(char argv[][MAX_SIZE], int argc)
         return errno;
     }
 
-    tcsetpgrp( STDIN_FILENO, par );
-    tcsetpgrp( STDOUT_FILENO, par );
+    // printf( "before if\n");
+    // tcsetpgrp( STDIN_FILENO, par );
+    // tcsetpgrp( STDOUT_FILENO, par );
+    // printf( "after tc\n");
 
     if (pid == 0) // Child
     {   
@@ -293,10 +294,16 @@ int ForegrBackgr(char argv[][MAX_SIZE], int argc)
             signal( SIGTTIN, SIG_DFL );
             signal( SIGTTOU, SIG_DFL );
         }
+
+        if( backgr == 0)
+        {
+            FgId = getpid();
+        }
+        // printf( "execing\n");
         if (execvp(tmp[0], tmp) == -1)
         {
             fprintf( stderr, "Exec error: Either the command is not applicable, or it doesn't exist\n");
-            return errno;
+            _exit(errno);
         }
 
     }
@@ -311,8 +318,10 @@ int ForegrBackgr(char argv[][MAX_SIZE], int argc)
 
         if (backgr == 0)
         {
-            waitpid(pid, &ret, 0);
+            int ret2 = waitpid(pid, &ret, 0);
+            // printf( "%d\n", ret2);
 
+            FgId = -1;
         }
 
         if (backgr == 1)

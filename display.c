@@ -3,6 +3,8 @@
  * PromptDisplay and GetCommand functions are present.
  ****/
 
+int FgId = -1;
+
 int Tokenise( char TempArgv[], char Tokenised[][MAX_SIZE])
 {
     char *str = strtok_r(TempArgv, " \t\n", &TempArgv);
@@ -29,25 +31,36 @@ void NoZombie(int signum)
 
 void ControlZ(int sig)
 {
-    printf( "yes\n");
+    
     return;        
 }
 
 void ControlC( int sig)
 {
-    
+    if( FgId == -1)
+        ;
+    else
+    {
+        if( kill(FgId, SIGINT) < 0 )
+        {
+            perror("kill");
+            // printf( "yes\n");
+        }
+        FgId = -1;
+    }
 
-    return;
 }
 
 
 int HistorySize = 0;
+int ParId;
 char HomeDirec[MAX_SIZE]; // Path to home directory
 
 int main(void)
 {
-    // signal( SIGTSTP, ControlZ );
-    // signal( SIGINT , ControlC );
+    ParId = getpid();
+    signal( SIGTSTP, ControlZ );
+    signal( SIGINT , ControlC );
 
     char *ret_str = (char *)malloc(MAX_SIZE * sizeof(char));
     if( ret_str == NULL )
