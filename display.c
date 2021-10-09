@@ -27,10 +27,7 @@ void ControlZ(int sig)
 {
     // fprintf( stderr, "okay %d\n", FgId);
     if( FgId == -1)
-    {
         printf("\r");
-        return;
-    }
     else
     {
         if( kill(FgId, SIGTSTP) < 0)
