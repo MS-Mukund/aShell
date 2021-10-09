@@ -3,13 +3,14 @@
 int ProcessCount = 0;
 int AllProcess = 0;
 BackPro *ProcessList = NULL;
+BackPro *FgPro = NULL;
 
 void waiting_func(int signum);
-void FindAndDelProcess(pid_t pid, char str[]);
+void FindAndDelProcess(pid_t pid, char str[], int is_bg );
 
-int AddProcess(pid_t pid, char **tmp, int argc)
+int AddProcess(pid_t pid, char **tmp, int argc, int is_bg)
 {
-   
+    // printf( "entered\n");
     if (ProcessCount >= MAX_PROCESS) // kill a process randomly
     {
         if (kill(ProcessList->pid, SIGKILL) == -1)
@@ -36,9 +37,8 @@ int AddProcess(pid_t pid, char **tmp, int argc)
         return -1;
     }
     new->pid = pid;
-    // printf( "pid: %d\n", pid);
-    
-    AllProcess++;
+    if( is_bg )
+        AllProcess++;
     new->job_id = AllProcess;
    
     new->argc = argc;
@@ -52,14 +52,21 @@ int AddProcess(pid_t pid, char **tmp, int argc)
     } 
 
     BackPro *Head = ProcessList, *prev = NULL;
+    if( !is_bg )
+    {
+        Head = FgPro;
+    }
     while( Head != NULL)
     {
-        if( strcmp( new->argv[0], Head->argv[0]) > 0) // alphabetical order
+        if( strcmp( new->argv[0], Head->argv[0]) < 0) // alphabetical order
         {
             if( prev == NULL)
             {
                 new->next = Head;
-                ProcessList = new;
+                if( is_bg )
+                    ProcessList = new;
+                else
+                    FgPro = new;
             }
             else
             {
@@ -77,7 +84,10 @@ int AddProcess(pid_t pid, char **tmp, int argc)
         if( prev == NULL)
         {
             new->next = NULL;
-            ProcessList = new;
+            if( is_bg )
+                ProcessList = new;
+            else
+                FgPro = new;
         }
         else
         {
@@ -86,15 +96,20 @@ int AddProcess(pid_t pid, char **tmp, int argc)
         }
     }
 
-    ProcessCount++;
+    if( is_bg )
+        ProcessCount++;
 
     return 0;
 }
 
-void FindAndDelProcess(pid_t pid, char str[])
+void FindAndDelProcess(pid_t pid, char str[], int is_bg )
 {   
     BackPro *tmp = ProcessList;
+    if( !is_bg )
+        tmp = FgPro;
     BackPro *prev = NULL;
+
+    // printf( "deleting %d\n", pid);
     int i = 0;
     for ( i = 0; i < MAX_PROCESS; i++)
     {
@@ -108,8 +123,11 @@ void FindAndDelProcess(pid_t pid, char str[])
         {
             strcpy(str, tmp->argv[0]);
             if( prev == NULL)
-            {
-                ProcessList = tmp->next;
+            {   
+                if( is_bg )
+                    ProcessList = tmp->next;
+                else
+                    FgPro = tmp->next;
             }
             else
             {
@@ -123,8 +141,14 @@ void FindAndDelProcess(pid_t pid, char str[])
             free(tmp->argv);
             free(tmp);
             
-            ProcessCount--;
+            if( is_bg )
+                ProcessCount--;
             break;
+        }
+
+        if( !is_bg )
+        {
+            FgPro = NULL;
         }
 
         prev = tmp;
@@ -141,52 +165,15 @@ void waiting_func(int signum)
 {
     // waitpid( signum, NULL, 0 );
     int child_stat;
-    pid_t pid = waitpid(-1, &child_stat, WNOHANG | WUNTRACED);
-    if( pid == -1 || pid == 0 )
-    {
-        return;
-    }
-
-    char str[MAX_SIZE];
-    FindAndDelProcess(pid, str);
-    if (str[0] == '\0')
-    {
-        fprintf(stderr, "error: process not found\n");
-        return;
-    }
-
-    fprintf(stderr, "\n%s with pid %d exited ", str, pid);
-
-    if (WIFEXITED(child_stat))
-    {
-        fprintf(stderr, "normally\n");
-    }
-    else
-    {
-        fprintf(stderr, "abnormally\n");
-    }
-
-    yellow();
-    PromptDisplay();
-    reset();
-
-    fflush(stdout);
-
-    return;
-}
-
-void waiting_func2(int signum)
-{
-    // waitpid( signum, NULL, 0 );
-    int child_stat;
     pid_t pid = waitpid(-1, &child_stat, WNOHANG );
     if( pid == -1 || pid == 0 )
     {
         return;
     }
+    printf( "%d here\n", pid );
 
     char str[MAX_SIZE];
-    FindAndDelProcess(pid, str);
+    FindAndDelProcess(pid, str, 1);
     if (str[0] == '\0')
     {
         fprintf(stderr, "error: process not found\n");
@@ -215,9 +202,9 @@ void waiting_func2(int signum)
 
 int ForegrBackgr(char argv[][MAX_SIZE], int argc)
 {
-    printf( "entered\n");
-    char **tmp = (char **)malloc(sizeof(char *) * (argc + 1));
-    if (tmp == NULL)
+    char **MegaTmp = (char **)malloc(sizeof(char *) * (argc + 1));
+    char RandStr[MAX_SIZE];
+    if (MegaTmp == NULL)
     {
         perror("malloc error");
         _exit(errno);
@@ -231,49 +218,30 @@ int ForegrBackgr(char argv[][MAX_SIZE], int argc)
             argv[i][0] = '\0';
             continue;
         }
-        tmp[j] = (char *)malloc(sizeof(char) * MAX_SIZE);
-        if (tmp[j] == NULL)
+        MegaTmp[j] = (char *)malloc(sizeof(char) * MAX_SIZE);
+        if (MegaTmp[j] == NULL)
         {
             perror("malloc error");
             _exit(errno);
         }
 
-        strcpy(tmp[j], argv[i]);
+        strcpy(MegaTmp[j], argv[i]);
         j++;
     }
     
     if (backgr == 1)
-    {
         argc--;
-    }
-    tmp[argc] = NULL;
+    MegaTmp[argc] = NULL;
 
     if (backgr == 1)
     {
         sig_t sig = signal(SIGCHLD, waiting_func);
-        
-        const sigset_t TermIO[2] = { SIGTTIN, SIGTTOU };    
-        if( sigprocmask( SIG_BLOCK, TermIO, NULL ) < 0)
-        {
-            perror( "Sigprocmask() error");
-            return errno;
-        }
+        printf( "%p\n", sig);
     }
 
-    else if( backgr == 0)
-    {
-        // sig_t sig = signal(SIGCHLD, waiting_func2);
-        // if( sig < 0)
-        // {
-        //     perror( "Signal() error");
-        //     return errno;
-        // }
-    }
-
-    // printf( "before fork\n");
     pid_t par = getpid();
     pid_t pid = fork();
-    // printf( "after fork\n");
+
     int ret = 0;
     if (pid < 0)
     {
@@ -281,36 +249,25 @@ int ForegrBackgr(char argv[][MAX_SIZE], int argc)
         return errno;
     }
 
-    // printf( "before if\n");
-    // tcsetpgrp( STDIN_FILENO, par );
-    // tcsetpgrp( STDOUT_FILENO, par );
-    // printf( "after tc\n");
-
     if (pid == 0) // Child
     {   
         if( backgr == 1)
         {
             setpgid(0, 0);
-            signal( SIGTTIN, SIG_DFL );
-            signal( SIGTTOU, SIG_DFL );
+            // signal( SIGTTIN, SIG_DFL );
+            // signal( SIGTTOU, SIG_DFL );
         }
 
-        if( backgr == 0)
-        {
-            FgId = getpid();
-        }
-        // printf( "execing\n");
-        if (execvp(tmp[0], tmp) == -1)
+        if (execvp(MegaTmp[0], MegaTmp) == -1)
         {
             fprintf( stderr, "Exec error: Either the command is not applicable, or it doesn't exist\n");
             _exit(errno);
         }
-
     }
 
     else // Parent
     {
-        if ( backgr == 1 && AddProcess( pid, tmp, argc ) == -1)
+        if ( backgr == 1 && AddProcess( pid, MegaTmp, argc, 1 ) == -1)
         {
             printf("Error: process already exists\n");
             return -1;
@@ -318,9 +275,16 @@ int ForegrBackgr(char argv[][MAX_SIZE], int argc)
 
         if (backgr == 0)
         {
-            int ret2 = waitpid(pid, &ret, 0);
-            // printf( "%d\n", ret2);
+            FgId = pid;
+            AddProcess( pid, MegaTmp, argc, 0 );
+            int ret2 = waitpid(pid, &ret, WUNTRACED );
+            if( ret2 == -1)
+            {
+                perror("waitpid error");
+                return errno;
+            }
 
+            FindAndDelProcess(pid, RandStr, 0);
             FgId = -1;
         }
 

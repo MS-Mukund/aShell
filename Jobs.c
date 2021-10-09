@@ -56,7 +56,6 @@ int jobs( char argv[][MAX_SIZE], int argc )
             // xprintf( "%d %d\n", i, sizeof(fp));
             fscanf( fp, "%s", runn );
         }
-        // printf( "got it\n");
         printf( "[%d] ", Ptr->job_id );
     
         if( strcmp( runn, "S") == 0 || strcmp(runn, "R") == 0 )
@@ -95,6 +94,7 @@ int sig ( char argv[][MAX_SIZE], int argc )
 
     int job_id = atoi( argv[1] );
     int sig_no = atoi( argv[2] );
+    printf( "%d\n", sig_no);
 
     if( sig_no > 31 || sig_no < 1 )
     {
@@ -124,7 +124,7 @@ int sig ( char argv[][MAX_SIZE], int argc )
             }
             if( strcmp( "S", runn) == 0 || strcmp( "R", runn) == 0 )
             {
-                if( kill( Ptr->pid, sig_no ) < 0)
+                if( kill( Ptr->pid, SIGTSTP ) < 0)
                 {
                     perror( "kill error");
                     return errno;
@@ -171,64 +171,37 @@ int BringFg( char argv[][MAX_SIZE], int argc )
                 _exit(errno);
             }
 
-            char runn[9][MAX_SIZE];
+            char runn[3][MAX_SIZE];
             for( int i = 0; i < 3; i++)
             {
                 fscanf( fp, "%s", runn[i] );
             }
 
-            // runn[8] contains foreground process grp id of controlling terminal
-            // runn[2] contains status of process
-            // runn[4] contains process group id of process
-
-           
             if( kill( Ptr->pid, SIGCONT ) < 0)
             {
                 perror( "kill() failed");
                 return errno;
-            }
-                
+            }  
             char str[MAX_SIZE];
 
-            signal(SIGTTOU, SIG_IGN);   // parent should not take input
-            signal(SIGTTIN, SIG_IGN);
-
-            // giving terminal control to the process
-            if( tcsetpgrp( STDIN_FILENO, Ptr->pid) < 0)
-            {
-                perror( "tcsetpgrp() error");
-                return errno;
-            }
-            
             // wait for the process to finish
             pid_t Pr_pid = Ptr->pid;
             FgId = Pr_pid;
             int status;
             int ret;
+            
             // printf( "%d\n", Ptr->pid);
-            if( ( ret = waitpid( Pr_pid, &status, WUNTRACED | WCONTINUED ) ) == -1 )
+            AddProcess( Pr_pid, Ptr->argv, Ptr->argc, 0 );
+            
+            FindAndDelProcess( Pr_pid, str, 1 );
+            // printf( "%d\n", FgId);
+
+            if( ( ret = waitpid( Pr_pid, &status, WUNTRACED ) ) == -1 )
             {
                 perror( "waitpid() error");
                 return errno;
             }
 
-            // after child exits
-            if( tcsetpgrp( STDIN_FILENO, ParId ) < 0 )
-            {
-                perror( "tcsetpgrp() error");
-                return errno;
-            }
-
-            // give parent control of terminal
-            signal(SIGTTOU, SIG_DFL);
-            signal(SIGTTIN, SIG_DFL);
-
-            if( !WIFSTOPPED(status) ) // not stopped
-            {
-                printf( "not stopped\n");
-                FindAndDelProcess( Pr_pid, str );
-            }
-            
             return 0;
         }
     }
@@ -256,7 +229,6 @@ int BringBg( char argv[][MAX_SIZE], int argc )
     {
         if( Ptr->job_id == job_id )
         {
-            // printf( "yes\n");
             // send this process to the background
             sprintf( str, "/proc/%d/stat", Ptr->pid );
             FILE *fp;
@@ -270,23 +242,15 @@ int BringBg( char argv[][MAX_SIZE], int argc )
             for( int i = 0; i < 3; i++)
             {
                 fscanf( fp, "%s", runn );
-            }
-            
-            if( runn[0] == 'S' || runn[0] == 'R') // process already running
-            {
-                return 0;
-            }
+            }   
 
-            else
+            // printf( "hello\n");
+            if( kill( Ptr->pid, SIGCONT ) < 0)
             {
-                // AddProcess( Ptr->pid, Ptr->argv, Ptr->argc);
-                if( kill( Ptr->pid, SIGCONT ) < 0)
-                {
-                    perror( "kill() failed");
-                    return errno;
-                }
-                // printf("received it\n");
-            }
+                perror( "kill() failed");
+                return errno;
+            }                       
+            // printf( "bye\n");
             return 0;
         }
     }

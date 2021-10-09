@@ -23,28 +23,40 @@ int Tokenise( char TempArgv[], char Tokenised[][MAX_SIZE])
     return count;
 }
 
-void NoZombie(int signum)
-{
-    // just return
-    return;
-}
-
 void ControlZ(int sig)
 {
-    
-    return;        
+    // fprintf( stderr, "okay %d\n", FgId);
+    if( FgId == -1)
+    {
+        printf("\r");
+        return;
+    }
+    else
+    {
+        if( kill(FgId, SIGTSTP) < 0)
+        {
+            perror("kill");
+            exit(1);
+        }
+        // printf( "Kill success\n");
+        char ret_str[MAX_SIZE];
+        AddProcess(FgId, FgPro->argv, FgPro->argc, 1);
+        FindAndDelProcess(FgId, ret_str, 0 );
+        FgId = -1;
+    } 
+
+    fflush(stdout);
 }
 
 void ControlC( int sig)
 {
     if( FgId == -1)
-        ;
+        printf( "\r");
     else
     {
         if( kill(FgId, SIGINT) < 0 )
         {
             perror("kill");
-            // printf( "yes\n");
         }
         FgId = -1;
     }
@@ -158,10 +170,10 @@ void GetCommand()
 {
     char *command = malloc(sizeof(char) * MAX_SIZE);
     char *retstr = fgets( command, MAX_SIZE, stdin );
-    if( retstr == NULL )        // Ctrl D
+    if( retstr == NULL )        // Ctrl D handling
     {
         printf( "\n");
-        exit( 0 );
+        exit( errno );      // exiting with appropriate error code
     }
 
     int inp_fd = dup( STDIN_FILENO );
@@ -197,7 +209,6 @@ void GetCommand()
             str = strtok_r( NULL, "|", &pipeComp );
         }
         TempArgv[PipeCnt][0] = '\0';
-        // printf( "%d\n", PipeCnt);
 
         // n processes need n-1 pipes
         for( int i = 0; i < PipeCnt -1; i++ )
@@ -217,17 +228,10 @@ void GetCommand()
                 }
                 close(PipeFd[1]);
             }
-
-            // for final process we must write to stdout
-
                           
             count = Tokenise( TempArgv[i], Tokenised );
             ret = ExecCommand(Tokenised, count);
-            // fprintf( stderr, "w %s\n", Tokenised[0]);
-
-            // close(PipeFd[1]);
-            // close(PipeFd[0]);
-
+   
             if( PipeFd[0] != 0)
             {
                 if( dup2( PipeFd[0], STDIN_FILENO ) < 0 )

@@ -53,6 +53,7 @@ extern pid_t FgId;
 extern int ProcessCount;
 extern int AllProcess;
 extern BackPro *ProcessList;    // points to head of LL
+extern BackPro *FgPro;
 
 // function declarations
 void PromptDisplay();
@@ -75,8 +76,8 @@ int sig( char argv[][MAX_SIZE], int argc );
 int BringFg( char argv[][MAX_SIZE], int argc );
 int BringBg( char argv[][MAX_SIZE], int argc );
 
-void FindAndDelProcess(pid_t pid, char str[]);
-int AddProcess(pid_t pid, char **tmp, int argc);
+void FindAndDelProcess(pid_t pid, char str[], int is_bg);
+int AddProcess(pid_t pid, char **tmp, int argc, int is_bg);
 
 void red ();
 void yellow();

@@ -1,2 +1,2 @@
 a.out:  *.c 
-	gcc *.c -o a.out
+	gcc *.c -o aShell
