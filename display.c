@@ -27,7 +27,7 @@ void ControlZ(int sig)
 {
     // fprintf( stderr, "okay %d\n", FgId);
     if( FgId == -1)
-        printf("\r");
+        printf("\b\b  \b\b");
     else
     {
         if( kill(FgId, SIGTSTP) < 0)
@@ -48,7 +48,9 @@ void ControlZ(int sig)
 void ControlC( int sig)
 {
     if( FgId == -1)
-        printf( "\r");
+    {
+        printf( "\b\b  \b\b");
+    }
     else
     {
         if( kill(FgId, SIGINT) < 0 )
