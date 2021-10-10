@@ -236,7 +236,7 @@ int ForegrBackgr(char argv[][MAX_SIZE], int argc)
     if (backgr == 1)
     {
         sig_t sig = signal(SIGCHLD, waiting_func);
-        printf( "%p\n", sig);
+        // printf( "%p\n", sig);
     }
 
     pid_t par = getpid();

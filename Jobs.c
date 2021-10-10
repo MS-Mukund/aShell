@@ -79,6 +79,8 @@ int jobs( char argv[][MAX_SIZE], int argc )
             printf( "%s ", Ptr->argv[j] );
         }
         printf( "[%d]\n", Ptr->pid );
+
+        fclose( fp );
     }
 
     return 0;
@@ -94,7 +96,7 @@ int sig ( char argv[][MAX_SIZE], int argc )
 
     int job_id = atoi( argv[1] );
     int sig_no = atoi( argv[2] );
-    printf( "%d\n", sig_no);
+    // printf( "%d\n", sig_no);
 
     if( sig_no > 31 || sig_no < 1 )
     {
@@ -136,6 +138,8 @@ int sig ( char argv[][MAX_SIZE], int argc )
                 printf( "The process is not running\n");
                 return 2;
             }
+
+            fclose( fp );
         }
     }
 
@@ -202,6 +206,7 @@ int BringFg( char argv[][MAX_SIZE], int argc )
                 return errno;
             }
 
+            fclose( fp );
             return 0;
         }
     }
@@ -244,13 +249,15 @@ int BringBg( char argv[][MAX_SIZE], int argc )
                 fscanf( fp, "%s", runn );
             }   
 
-            // printf( "hello\n");
+            // printf( "hello %c\n", runn[0]);
             if( kill( Ptr->pid, SIGCONT ) < 0)
             {
                 perror( "kill() failed");
                 return errno;
             }                       
             // printf( "bye\n");
+
+            fclose(fp);
             return 0;
         }
     }

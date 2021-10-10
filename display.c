@@ -4,6 +4,12 @@
  ****/
 
 int FgId = -1;
+#define CYAN "\033[0;36m"
+#define PURPLE "\033[0;35m"
+#define RESET "\x1b[0m"
+#define MAGE  "\x1B[35m"
+#define BOLD "\033[1m"
+#define UNBOLD "\033[0m"
 
 int Tokenise( char TempArgv[], char Tokenised[][MAX_SIZE])
 {
@@ -72,6 +78,8 @@ int main(void)
     ParId = getpid();
     signal( SIGTSTP, ControlZ );
     signal( SIGINT , ControlC );
+
+    printf( MAGE BOLD "\n                  WELCOME TO\n" CYAN "                    aShell\n" RESET UNBOLD "\n");
 
     char *ret_str = (char *)malloc(MAX_SIZE * sizeof(char));
     if( ret_str == NULL )
